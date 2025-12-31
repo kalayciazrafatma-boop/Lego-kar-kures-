@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lego Kar Küresi</title>
+    <style>
+        body { margin: 0; background: #222; overflow: hidden; font-family: 'Courier New', monospace; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; color: white; }
+        
+        /* Kar Küresi Tasarımı */
+        .globe-container { position: relative; width: 300px; height: 400px; text-align: center; z-index: 2; }
+        .globe { width: 250px; height: 250px; background: radial-gradient(circle, rgba(255,255,255,0.2), rgba(135,206,235,0.4)); border-radius: 50%; border: 4px solid #fff; margin: 0 auto; position: relative; overflow: hidden; box-shadow: 0 0 20px rgba(255,255,255,0.5); }
+        
+        /* Lego Tabanı (Basit Blok Görünümü) */
+        .lego-base { width: 200px; height: 40px; background: #d32f2f; margin: -20px auto 0; border: 2px solid #b71c1c; position: relative; z-index: 3; box-shadow: inset 0 5px 0 rgba(0,0,0,0.2); }
+        .lego-studs { display: flex; justify-content: space-around; position: absolute; top: -10px; width: 100%; }
+        .stud { width: 30px; height: 10px; background: #d32f2f; border: 2px solid #b71c1c; border-bottom: none; border-radius: 5px 5px 0 0; }
+        
+        /* Mesaj Alanı */
+        #message { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 24px; font-weight: bold; color: #ffeb3b; text-shadow: 2px 2px #000; opacity: 0; transition: opacity 0.5s; pointer-events: none; width: 100%; text-align: center; }
+        
+        /* Havai Fişek Canvas */
+        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
+    </style>
+</head>
+<body>
+
+    <div class="globe-container">
+        <div class="globe">
+            <!-- Kar Taneleri CSS ile eklenebilir ama JS ile efekt yapacağız -->
+            <div id="message">SÜRPRİZ!<br>✨🚀✨</div>
+        </div>
+        <div class="lego-studs">
+            <div class="stud"></div><div class="stud"></div><div class="stud"></div><div class="stud"></div>
+        </div>
+        <div class="lego-base"></div>
+        <p style="margin-top:20px; font-size:12px; color:#ccc;">Bilgisayarda "Boşluk" tuşuna bas,<br>Telefonda cihazı salla!</p>
+    </div>
+
+    <canvas id="fireworksCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('fireworksCanvas');
+        const ctx = canvas.getContext('2d');
+        const messageEl = document.getElementById('message');
+        let isActive = false;
+
+        // Canvas Boyutlandırma
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+        // --- HAVAI FİŞEK MANTIĞI ---
+        let particles = [];
+
+        function createFirework(x, y) {
+            const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'];
+            for (let i = 0; i < 50; i++) {
+                particles.push({
+                    x: x, y: y,
+                    vx: (Math.random() - 0.5) * 10,
+                    vy: (Math.random() - 0.5) * 10,
+                    alpha: 1,
+                    color: colors[Math.floor(Math.random() * colors.length)]
+                });
+            }
+        }
+
+        function updateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach((p, index) => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.alpha -= 0.02;
+                p.vy += 0.1; // Yerçekimi
+                
+                ctx.globalAlpha = p.alpha;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+                ctx.fill();
+
+                if (p.alpha <= 0) particles.splice(index, 1);
+            });
+            requestAnimationFrame(updateParticles);
+        }
+        updateParticles();
+
+        // --- TETİKLEME FONKSİYONU ---
+        function triggerEffect() {
+            if (isActive) return;
+            isActive = true;
+
+            // Yazıyı Göster
+            messageEl.style.opacity = 1;
+
+            // Havai Fişek Patlat (Rastgele konumlarda)
+            let interval = setInterval(() => {
+                createFirework(
+                    window.innerWidth / 2 + (Math.random() - 0.5) * 300, 
+                    window.innerHeight / 2 + (Math.random() - 0.5) * 300
+                );
+            }, 300);
+
+            // 3 Saniye sonra durdur
+            setTimeout(() => {
+                clearInterval(interval);
+                messageEl.style.opacity = 0;
+                isActive = false;
+            }, 3000);
+        }
+
+        // --- BİLGİSAYAR İÇİN (KLAVYE) ---
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                triggerEffect();
+            }
+        });
+
+        // --- MOBİL İÇİN (SALLAMA - SHAKE) ---
+        let lastX = 0, lastY = 0, lastZ = 0;
+        let shakeThreshold = 25; // Hassasiyet ayarı
+
+        if (window.DeviceMotionEvent) {
+            window.addEventListener('devicemotion', (event) => {
+                let acc = event.accelerationIncludingGravity;
+                if (!acc) return;
+
+                let deltaX = Math.abs(lastX - acc.x);
+                let deltaY = Math.abs(lastY - acc.y);
+                let deltaZ = Math.abs(lastZ - acc.z);
+
+                if (deltaX + deltaY + deltaZ > shakeThreshold) {
+                    triggerEffect();
+                }
+
+                lastX = acc.x;
+                lastY = acc.y;
+                lastZ = acc.z;
+            });
+        }
+    </script>
+</body>
+</html>
